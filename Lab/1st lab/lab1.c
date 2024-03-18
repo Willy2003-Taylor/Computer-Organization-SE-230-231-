@@ -305,7 +305,8 @@ void
 \*****************************************************************************/
 void unsigned_div(IN int Dividend, IN int Divisor,
              OUT int * Remainder, OUT int * Quotient){
-             	
+            //Hint: the MSB of int type is for 'sign', which means bits for numbers are (WIDTH - 1)
+            //And the index of MSB is (WIDTH - 2). 	
     //TODO
     /*
     TASK 4
@@ -316,36 +317,66 @@ void unsigned_div(IN int Dividend, IN int Divisor,
     
 	// write your code here.
     int RemainderLeft = 0;
-    //BOOL move_right;
     BOOL LSB;
     *Quotient = Dividend;
-    LSB = get_bit(*Quotient, 0);
     //Initial state
-    shifter(&RemainderLeft, Quotient, 0);
-    LSB = get_bit(*Quotient, 0);
 
-    for(int i = 0; i < WIDTH; i++){
+    shifter(&RemainderLeft, Quotient, 0);
+    
+    for(int i = 0; i < WIDTH - 1; i++){
         int an = 0; 
 	    sub(RemainderLeft, Divisor, &an);
 	    RemainderLeft = an;
 
         if(RemainderLeft < 0){
             RemainderLeft += Divisor;
-            
-            shifter(&RemainderLeft, Quotient, 0);
-            LSB = get_bit(*Quotient, 0);
-            LSB = FALSE;
+            if(get_bit(*Quotient, WIDTH - 2) == TRUE){
+                *Quotient = (*Quotient - (1 << (WIDTH - 2))) << 1;
+                RemainderLeft = (RemainderLeft << 1) + 1;
+                LSB = get_bit(*Quotient, 0);
+                if(LSB != FALSE){
+                    *Quotient -= 1;
+                    LSB = FALSE;
+                }  
+            }
+            /*We may encounter a boundary where the most significant bit of 
+            the lower half of the remainder register is 1, which indicates that once the shift operation is finished,
+            1 on MSB will move to the LSB of the upper half of the register.
+            So what we need to do is to shift left the MSB of Quotient, and shift left for the rest of bits.
+
+            Thus, for LSB of upper half of the remainder register, it has an another 1 and the original number is shifted left.
+            */
+            else{
+                shifter(&RemainderLeft, Quotient, 0);
+                LSB = get_bit(*Quotient, 0);
+                if(LSB != FALSE){
+                    *Quotient -= 1;
+                    LSB = FALSE;
+                }
+            }  
         }
         
         else{
-            shifter(&RemainderLeft, Quotient, 0);
-            LSB = get_bit(*Quotient, 0);
-            LSB = FALSE;
+            if(get_bit(*Quotient, WIDTH - 2) == TRUE){
+                    *Quotient = (*Quotient - (1 << WIDTH - 2)) << 1;
+                    RemainderLeft = (RemainderLeft << 1) + 1;
+                    LSB = get_bit(*Quotient, 0);
+                    if(LSB != TRUE){
+                        *Quotient += 1;
+                        LSB = TRUE;
+                    }
+            }
+            else{
+                shifter(&RemainderLeft, Quotient, 0);
+                LSB = get_bit(*Quotient, 0);
+                if(LSB != TRUE){
+                    *Quotient += 1;
+                    LSB = TRUE;
+                }
+            }
         }
-    }
-
-
-    shifter(&RemainderLeft, Quotient, 1);
+    }   
+    RemainderLeft /= 2;
 
     for(int i = 0; i < WIDTH; i++){
         change_bit(Quotient, i, get_bit(*Quotient, i));
